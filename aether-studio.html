@@ -1,0 +1,725 @@
+<!DOCTYPE html>
+<html class="h-full" lang="es"><head><meta charset="utf-8"/><meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Aether Studio - AI Music Generation</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms"></script>
+<script src="https://cdn.jsdelivr.net/npm/lamejs@1.2.1/lame.min.js"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet"/>
+<script>tailwind.config={theme:{extend:{fontFamily:{sans:['Inter','sans-serif'],mono:['"JetBrains Mono"','monospace']}}}}</script>
+<style>
+::-webkit-scrollbar{width:5px;height:5px}::-webkit-scrollbar-track{background:rgba(10,14,30,.5)}::-webkit-scrollbar-thumb{background:rgba(99,102,241,.3);border-radius:4px}
+g.on ellipse{fill:#fff!important;stroke:#fff!important}g.on line,g.on path{stroke:#fff!important}g.on rect{fill:#fff!important}g.on text{fill:#fff!important}g.on{filter:drop-shadow(0 0 5px #a78bfa) drop-shadow(0 0 9px #38bdf8)}
+.card-active{border-color:rgba(139,92,246,.5);background:linear-gradient(135deg,rgba(30,27,75,.4),rgba(17,24,39,.6))}
+.sheet-glow{box-shadow:inset 0 0 60px rgba(99,102,241,.04),0 0 30px rgba(56,189,248,.05)}
+.glow-btn{box-shadow:0 0 20px rgba(139,92,246,.5),0 0 40px rgba(59,130,246,.3)}
+.step{margin-bottom:16px;line-height:1.5}
+#steps[data-f=tool] .step:not(.k-tool),#steps[data-f=model] .step:not(.k-model){display:none}
+select,input,textarea{background:#12162e!important;border:1px solid rgba(255,255,255,.08)!important;color:#e2e8f0!important}
+select:focus,input:focus,textarea:focus{border-color:rgba(139,92,246,.6)!important;box-shadow:none!important;outline:none}
+</style></head>
+<body class="h-full flex flex-col font-sans overflow-hidden bg-[#070913] text-slate-200 antialiased">
+<header class="h-14 border-b border-white/[0.08] bg-[#090c1a]/90 backdrop-blur-md px-4 flex items-center justify-between gap-3 shrink-0 z-30">
+ <div class="flex items-center gap-2.5">
+  <button id="toggleSide" class="lg:hidden w-8 h-8 rounded-lg border border-white/[0.08] text-slate-400 text-sm">☰</button>
+  <div class="w-8 h-8 rounded-lg bg-gradient-to-tr from-violet-600 via-fuchsia-500 to-indigo-400 p-[1px] shadow-[0_0_15px_rgba(168,85,247,0.4)]"><div class="w-full h-full bg-[#0b0e1e] rounded-[7px] flex items-center justify-center"><svg class="w-4 h-4 text-violet-400" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24"><path d="m12 3-1.9 5.8a2 2 0 0 1-1.3 1.3L3 12l5.8 1.9a2 2 0 0 1 1.3 1.3L12 21l1.9-5.8a2 2 0 0 1 1.3-1.3L21 12l-5.8-1.9a2 2 0 0 1-1.3-1.3Z"/></svg></div></div>
+  <span class="text-base font-bold tracking-tight text-white">Aether <span class="text-violet-400">Studio</span></span><span class="text-xs text-slate-400 hidden md:inline">AI Music Generation</span>
+ </div>
+ <div class="flex items-center gap-2 px-3 py-1 rounded-full bg-[#12162e]/90 border border-violet-500/25 shadow-[0_0_12px_rgba(139,92,246,0.15)] min-w-0">
+  <span class="text-xs text-slate-400 hidden sm:inline">Model:</span>
+  <select id="model" class="!border-0 !bg-transparent text-xs font-medium py-1 pl-1 pr-6 max-w-[200px] sm:max-w-[300px]"><option>Cargando…</option></select><span id="chip" class="hidden"></span>
+ </div>
+ <div class="flex items-center gap-3 text-xs">
+  <input id="key" type="password" autocomplete="off" placeholder="OpenRouter API key" class="rounded-lg text-xs py-1.5 px-3 w-36 sm:w-48"/>
+  <div class="hidden sm:flex items-center gap-2 px-2.5 py-1 rounded-full bg-emerald-950/30 border border-emerald-500/20"><span class="w-2 h-2 rounded-full bg-emerald-400 shadow-[0_0_8px_#34d399] animate-pulse"></span><span class="text-emerald-300 text-[11px] font-medium">Online</span></div>
+  <div class="hidden sm:block w-8 h-8 rounded-full bg-gradient-to-tr from-cyan-400 via-indigo-500 to-fuchsia-500 p-[1.5px]"><div class="w-full h-full rounded-full bg-[#11162d] flex items-center justify-center text-indigo-300">♪</div></div>
+ </div>
+</header>
+<div class="flex-1 flex overflow-hidden">
+ <nav class="w-14 border-r border-white/[0.08] bg-[#090c1a] hidden md:flex flex-col items-center py-4 gap-3 shrink-0">
+  <button class="w-9 h-9 rounded-xl bg-violet-600/20 text-violet-400 border border-violet-500/40 shadow-[0_0_12px_rgba(139,92,246,0.3)]" title="Compositor">♫</button>
+  <button data-nt="score" class="w-9 h-9 rounded-xl text-slate-400 hover:text-white hover:bg-white/[0.04] !px-0 !py-0 text-sm" title="Partitura">≣</button>
+  <button data-nt="roll" class="w-9 h-9 rounded-xl text-slate-400 hover:text-white hover:bg-white/[0.04] !px-0 !py-0 text-sm" title="Piano Roll">∿</button>
+  <button data-nt="ana" class="w-9 h-9 rounded-xl text-slate-400 hover:text-white hover:bg-white/[0.04] !px-0 !py-0 text-sm" title="Análisis">◫</button>
+ </nav>
+ <aside id="side" class="w-80 border-r border-white/[0.08] bg-[#0a0d1d] flex flex-col shrink-0 max-lg:absolute max-lg:z-20 max-lg:top-14 max-lg:bottom-20 max-lg:shadow-2xl">
+  <div class="p-3.5 border-b border-white/[0.08]"><h2 class="text-xs font-semibold uppercase tracking-wider">AI Agent Console</h2><div class="flex items-center gap-1.5 mt-1"><span class="w-1.5 h-1.5 rounded-full bg-cyan-400 animate-ping"></span><span id="agentst" class="text-[11px] text-cyan-300">Listo</span></div></div>
+  <div class="px-3 pt-2.5 pb-1"><div class="grid grid-cols-3 gap-1 bg-[#101429] p-1 rounded-lg border border-white/[0.06] text-center text-xs">
+   <button data-cf="all" class="py-1 rounded bg-violet-600/30 text-violet-300 font-medium border border-violet-500/30">Todo</button>
+   <button data-cf="tool" class="py-1 rounded text-slate-400 hover:text-slate-200">Tools</button>
+   <button data-cf="model" class="py-1 rounded text-slate-400 hover:text-slate-200">Modelo</button></div></div>
+  <div id="steps" data-f="all" class="flex-1 overflow-y-auto p-3.5 font-mono text-xs"><div class="step k-sys text-slate-400 text-[11.5px]">En espera. Al generar verás cada búsqueda, tool y respuesta real del modelo.</div></div>
+ <div class="p-3 border-t border-white/[0.08]"><div class="p-2.5 rounded-xl bg-gradient-to-r from-violet-900/20 to-cyan-900/20 border border-violet-500/30 flex items-center gap-3"><div class="w-7 h-7 rounded-lg bg-violet-600/30 border border-violet-400/30 flex items-center justify-center text-cyan-300 text-xs">✦</div><div class="min-w-0"><p class="text-xs font-semibold text-white truncate" id="cardT">Listo para componer</p><p class="text-[10px] text-slate-400 truncate" id="cardS">Describe tu pieza y pulsa Generar</p></div></div></div>
+ </aside>
+ <main class="flex-1 flex flex-col bg-[#080b18] min-w-0 overflow-hidden">
+  <div class="px-4 lg:px-6 py-3 border-b border-white/[0.08] shrink-0">
+   <div class="flex gap-3 items-stretch">
+    <textarea id="prompt" rows="2" placeholder="Describe tu pieza: «canción medieval épica con flauta dulce, laúd y cuerdas»…" class="flex-1 rounded-xl text-sm px-3 py-2 resize-none"></textarea>
+    <button id="go" class="px-5 rounded-xl bg-gradient-to-tr from-violet-600 via-indigo-600 to-sky-400 text-white text-sm font-semibold glow-btn hover:scale-[1.02] active:scale-95 transition disabled:opacity-40">Generar</button>
+   </div>
+   <div id="status" class="text-xs text-slate-400 mt-1.5 min-h-[16px]">Listo</div>
+  </div>
+  <div class="px-4 lg:px-6 py-3 flex flex-wrap items-center justify-between gap-3 border-b border-white/[0.08] shrink-0">
+   <div class="flex items-center gap-3 min-w-0"><div id="hcover" class="hidden relative overflow-hidden w-14 h-14 rounded-xl shrink-0 border border-violet-500/30 bg-gradient-to-br from-violet-700 to-indigo-950 cursor-pointer" title="Clic: generar otra portada"></div><div class="min-w-0"><h1 id="title" class="text-xl font-bold text-white truncate">Sin pieza</h1><div id="meta" class="text-xs text-slate-400 mt-0.5 font-mono truncate">—</div></div></div>
+   <div class="flex items-center bg-[#11152d] p-1 rounded-xl border border-white/[0.08] text-xs">
+    <button data-t="score" class="px-4 py-1.5 rounded-lg bg-violet-600/30 text-white font-medium border border-violet-500/40 shadow">Partitura</button>
+    <button data-t="roll" class="px-4 py-1.5 rounded-lg text-slate-400 hover:text-slate-200 transition">Piano Roll</button>
+    <button data-t="ana" class="px-4 py-1.5 rounded-lg text-slate-400 hover:text-slate-200 transition">Análisis</button></div>
+  </div>
+  <div class="flex-1 overflow-auto p-4 lg:p-6">
+   <div class="w-full max-w-4xl mx-auto bg-[#0b0e22]/90 rounded-2xl border border-white/[0.08] sheet-glow p-5 min-h-[360px] relative">
+    <div id="p-score"><div class="flex justify-end mb-3"><button id="pngsheet" class="px-3 py-1.5 rounded-lg text-[11px] border border-white/10 text-slate-300 hover:text-white">Descargar partitura (PNG)</button></div><div id="sheet" class="text-slate-500 text-xs">Genera una pieza para ver su partitura.</div><details class="mt-5"><summary class="text-xs text-slate-500 cursor-pointer">Código PMNS</summary><pre id="score" class="font-mono text-[11px] leading-relaxed text-sky-200/80 whitespace-pre-wrap mt-2">—</pre></details></div>
+    <div id="p-roll" class="hidden relative"><button id="pngroll" class="absolute right-0 -top-1 z-10 px-3 py-1.5 rounded-lg text-[11px] border border-white/10 bg-[#0b0e22] text-slate-300 hover:text-white">PNG</button><canvas id="roll" class="w-full h-[360px] block"></canvas><div id="head" class="absolute top-0 bottom-0 w-px bg-white/70" style="left:0"></div></div>
+    <div id="p-ana" class="hidden"><div id="ana" class="text-slate-300"><span class="text-slate-500 text-xs">Genera una pieza para ver su análisis.</span></div></div>
+   </div>
+  </div>
+ </main>
+ <aside class="w-72 border-l border-white/[0.08] bg-[#090c1b] hidden xl:flex flex-col shrink-0">
+  <div class="p-4 border-b border-white/[0.08] space-y-3"><h2 class="text-sm font-semibold text-white">Mi Biblioteca</h2>
+   <input id="q" type="text" placeholder="Buscar composiciones…" class="w-full rounded-xl px-3 py-1.5 text-xs"/></div>
+  <div id="list" class="flex-1 overflow-y-auto p-3 space-y-2.5"></div>
+ </aside>
+</div>
+<footer class="h-20 border-t border-white/[0.08] bg-[#080b19]/95 px-4 flex items-center gap-4 shrink-0 z-40">
+ <div class="w-48 min-w-0 hidden sm:flex items-center gap-3"><div id="thumb" class="relative overflow-hidden w-12 h-12 rounded-xl shrink-0 border border-violet-500/30 bg-gradient-to-br from-violet-700 to-indigo-950 flex items-center justify-center text-violet-200">♪</div><div class="min-w-0"><h4 id="now" class="text-xs font-semibold text-white truncate">—</h4><span class="text-[11px] text-slate-500">Aether Studio</span></div></div>
+ <button id="prev" class="text-slate-300 hover:text-white px-1" title="Anterior">⏮</button><button id="play" class="w-10 h-10 rounded-full bg-gradient-to-tr from-violet-600 to-indigo-600 text-white hover:scale-105 active:scale-95 transition shrink-0" title="Reproducir">▶</button>
+ <button id="stop" class="w-8 h-8 rounded-full border border-white/10 text-slate-300 hover:text-white shrink-0" title="Detener">■</button><button id="next" class="text-slate-300 hover:text-white px-1" title="Siguiente">⏭</button>
+ <canvas id="wave" class="flex-1 h-9 min-w-0 cursor-pointer"></canvas>
+ <span id="time" class="font-mono text-xs text-slate-400 whitespace-nowrap">0:00 / 0:00</span>
+ <input id="vol" type="range" min="0" max="1" step="0.01" value="0.8" class="w-20 hidden md:block accent-violet-500 !p-0 !h-1.5"/>
+ <div class="flex gap-1.5 shrink-0">
+  <button id="dl" class="px-2.5 py-1.5 rounded-lg text-[11px] font-semibold bg-violet-600/30 border border-violet-500/40 text-white">MP3</button>
+  <button id="dlwav" class="px-2.5 py-1.5 rounded-lg text-[11px] border border-white/10 text-slate-300 hover:text-white">WAV</button>
+  <button id="dlweb" class="px-2.5 py-1.5 rounded-lg text-[11px] border border-white/10 text-slate-300 hover:text-white">WebM</button>
+  <button id="dlmid" class="px-2.5 py-1.5 rounded-lg text-[11px] border border-white/10 text-slate-300 hover:text-white">MIDI</button>
+  <button id="share" class="px-2.5 py-1.5 rounded-lg text-[11px] border border-white/10 text-slate-300 hover:text-white" title="Copiar enlace">Compartir</button></div>
+</footer>
+<script>
+
+const CONFIG = {
+  apiUrl: "https://openrouter.ai/api/v1/chat/completions",
+  modelsUrl: "https://openrouter.ai/api/v1/models",
+  apiKey: "",
+  defaultModel: "nvidia/nemotron-3-ultra-550b-a55b:free",
+  preferredFree: [
+    "nvidia/nemotron-3-ultra-550b-a55b:free",
+    "thinkingmachines/inkling:free",
+    "thinkingmachines/inkling-small:free",
+    "nvidia/nemotron-3-super-120b-a12b:free",
+    "nvidia/nemotron-3.5-lightning:free",
+    "google/gemma-4-31b-it:free",
+    "openrouter/free"
+  ]
+};
+
+const SYSTEM = `Eres el compositor residente de Aether Studio: un agente investigador y orquestador que escribe piezas INSTRUMENTALES ORIGINALES, de calidad de estudio, en formato PMNS. Nunca entregas un borrador rapido: investigas, compones, validas y pules.
+
+FIDELIDAD A LA PETICION (prioridad maxima): cumple EXACTAMENTE lo que pidio el usuario: estilo, epoca, ambiente, emocion, instrumentos nombrados (deben sonar con protagonismo), duracion y tema. El titulo debe reflejar la peticion. Si el sistema te lista INSTRUMENTOS EXIGIDOS, todos deben aparecer en el PMNS. Ignorar la peticion o entregar algo generico es un fallo total.
+AUTOCRITICA antes de entregar: relee la peticion, comprueba que cada seccion suena distinta, que hay gancho, que el climax es claro y que no hay escalas ni notas repetidas en bucle.
+
+METODO DE TRABAJO (recomendado; tu decides cuanto usar las tools)
+1. Si la peticion no es musical (cancion, pieza, tema, soundtrack, melodia), responde exactamente: lo siento no puedo hacer eso
+2. Fase INVESTIGACION. Puedes emitir VARIAS tools en un mismo mensaje, una por linea, sin texto extra. Conviene lanzar:
+   - al menos 2 TOOL_SEARCH con consultas DISTINTAS (p.ej. genero e historia; melodias/ritmos/instrumentos tipicos; modo o escala; una obra famosa de referencia). Lee los resultados y usalos de verdad.
+   - TOOL_STYLE, TOOL_INSTRUMENTS, TOOL_SCALE, TOOL_PROGRESSION.
+3. Fase COMPOSICION: TOOL_MOTIF para elegir el motivo; luego TOOL_VARY al menos 2 veces para obtener transformaciones calculadas del motivo (secuencia, inversion, retrogrado, aumentacion, disminucion). TOOL_PHRASE para planificar la forma.
+4. Fase CONTROL (opcional): TOOL_VALIDATE con el PMNS completo devuelve avisos orientativos; corrige solo lo que de verdad mejore la pieza. La decision final es tuya.
+5. La respuesta final es UNICAMENTE el PMNS (empieza con #, sin prologo, sin bloques de codigo, sin explicaciones).
+
+Sintaxis exacta de tools (una por linea):
+TOOL_SEARCH: <consulta corta>
+TOOL_STYLE: <genero o estilo>
+TOOL_INSTRUMENTS:
+TOOL_SCALE: <tonica> <modo>      ej: D dorico
+TOOL_MOTIF: <tonalidad> | <mood>
+TOOL_VARY: <tecnica> | <notas>   ej: secuencia +2 | D4q A3e D4e F4q   (tecnicas: secuencia +N, inversion, retrogrado, aumentacion, disminucion)
+TOOL_PHRASE: <motivo elegido>
+TOOL_PROGRESSION: <estilo> | <tonalidad>
+TOOL_VALIDATE:
+<pmns completo>
+NO HAS de basarte automaticamente de las TOOls, si la TOOL_SEARCH DA OTROS resultados fiables, prefiere usar esos a los de las otras tools, porque la herramienta no tiene criterio musical. Tu eres el compositor y tu decides que es lo mejor para la pieza.
+CALIDAD Y NO REPETICION (lo mas importante)
+- PROHIBIDO ser repetitivo. Ninguna seccion puede copiar las notas de otra. Cada seccion aporta material nuevo o una transformacion real del motivo (secuencia, inversion, cambio de ritmo, registro, fragmentacion, ornamento). Si repites una seccion, usa repetir: N en vez de pegar el mismo texto, y aun asi la pieza necesita contraste.
+- PROHIBIDO rellenar con escalas, arpegios en bucle, notas pegadas en la misma altura o silencios para alargar. Maximo 4 grados conjuntos seguidos y luego salto o respiracion.
+- Una cancion tiene gancho: el estribillo debe ser tarareable y DISTINTO al verso (nuevo contorno y ritmo).
+- Duracion: 1:30 a 3:00 minutos. Minimo 7 secciones (Intro, Verso1, Verso2, Estribillo, Puente, Estribillo2/Verso3, Final), cada una con 12-28 notas melodicas (Intro y Final 6-14).
+- Ritmo variado: mezcla w h q e s, sincopas, anacrusas, silencios con intencion. Una linea solo de negras es plana.
+- Arco dinamico: pp/p en intro, crecimiento, climax f/ff en puente o estribillo final, cierre p.
+- Frases de 2, 4 u 8 tiempos con pregunta (termina abierta) y respuesta (resuelve a tonica). Cadencias distintas en cada seccion.
+- Usa los datos de TOOL_SEARCH para elegir modo, tempo, instrumentos y recursos autenticos del genero. No inventes estilo generico.
+
+ORQUESTACION (el MP3 final suena con todas las pistas)
+- Usa 3 a 5 instrumentos con ROL: melodia (instrumento/notas), contramelodia o segunda voz (instrumento2/notas2), tercera voz o relleno (instrumento3/notas3), armonia (acordes + acordes_instrumento), bajo automatico, percusion.
+- Cambia la orquestacion entre secciones: intro ligera, estribillo mas lleno, puente con otro color, final desnudo.
+- Segunda y tercera voz: notas distintas a la melodia (terceras, sextas, notas largas, respuestas en los huecos), nunca un unisono copiado.
+- acordes_instrumento: orchestral_harp o acoustic_guitar_nylon (arpegio) ; string_ensemble_1, church_organ, choir_aahs, french_horn (colchon sostenido) ; ninguno si es solista puro.
+- Ids validos: los de TOOL_INSTRUMENTS. Sinonimos: flauta dulce=recorder, laud=acoustic_guitar_nylon, cuerdas=string_ensemble_1, organo=church_organ, arpa=orchestral_harp.
+
+FORMATO PMNS
+Duraciones: w=redonda h=blanca q=negra e=corchea s=semicorchea (por defecto q). Notas: D4q, Bb3e, F#5h. Silencio: Rq. Sufijo - legato, ! acento. Octava 4 = C4 do central. Registro comodo C3-C6.
+Acordes: Raiz+calidad+pulsos (m maj 7 m7 maj7 dim sus2 sus4 5), ej Dm4 Bb4 F4 C4. Deben sumar aprox. los mismos pulsos que la melodia de la seccion.
+# Titulo evocador
+## Estilo
+descripcion con instrumentos
+## Tempo
+84
+## Tonalidad
+D dorico
+## Estructura
+### Intro
+instrumento: recorder
+notas: D4q A3e D4e F4q Rq E4e C4q D4h
+instrumento2: cello
+notas2: D3w A2w
+acordes: Dm4 Am4
+acordes_instrumento: orchestral_harp
+dinamica: p
+repetir: 1
+percusion: ninguno
+Campos por seccion: instrumento, notas, instrumento2, notas2, instrumento3, notas3, acordes, acordes_instrumento, dinamica (pp|p|mp|mf|f|ff), repetir (1-2), percusion (ninguno|pulso|epica|marcha).
+
+MODOS: dorico (folk, medieval noble), eolico (triste, narrativo), mixolidio (alegre modal, western), frigio (oscuro, espanol), lidio (onirico), jonico (brillante, solo si el estilo lo pide). Respeta el caracter del genero que investigaste.
+
+CHECKLIST DE AUTOCRITICA (autocritica interna antes de entregar):
+[ ] Estan TODOS los instrumentos que pidio el usuario (si pidio laud, DEBE sonar).
+[ ] La duracion coincide con lo pedido (2 minutos = suficientes secciones).
+[ ] Hay saltos de 3a, 4a o 5a, no solo escalas.
+[ ] El estribillo es distinto del verso y tarareable; usa repetir: 2 en el estribillo para alargar sin copiar texto.
+[ ] Cada seccion cambia de orquestacion o de material.
+
+RECUERDA: calidad sobre velocidad. Si suena a ejercicio, a bucle o a relleno, has fallado aunque el formato sea correcto.
+`;
+
+const NOTE = {C:0,"C#":1,Db:1,D:2,"D#":3,Eb:3,E:4,F:5,"F#":6,Gb:6,G:7,"G#":8,Ab:8,A:9,"A#":10,Bb:10,B:11};
+const DUR = {w:4,h:2,q:1,e:.5,s:.25};
+const DYN = {pp:.3,p:.45,mp:.6,mf:.75,f:.88,ff:1};
+const CQ = {"":[0,4,7],maj:[0,4,7],m:[0,3,7],min:[0,3,7],"7":[0,4,7,10],m7:[0,3,7,10],maj7:[0,4,7,11],dim:[0,3,6],sus2:[0,2,7],sus4:[0,5,7],"5":[0,7]};
+const ALIAS = {lute:"acoustic_guitar_nylon",laud:"acoustic_guitar_nylon",guitar:"acoustic_guitar_nylon",piano:"acoustic_grand_piano",organ:"church_organ",bass:"acoustic_bass",finger_bass:"electric_bass_finger",strings:"string_ensemble_1",choir:"choir_aahs",harp:"orchestral_harp",brass:"brass_section",pad:"pad_2_warm",flauta:"flute"};
+const SF = new Set(["acoustic_grand_piano","bright_acoustic_piano","electric_piano_1","harpsichord","church_organ","accordion","acoustic_guitar_nylon","acoustic_guitar_steel","electric_guitar_clean","acoustic_bass","electric_bass_finger","violin","viola","cello","contrabass","orchestral_harp","timpani","string_ensemble_1","string_ensemble_2","choir_aahs","trumpet","trombone","french_horn","brass_section","flute","recorder","pan_flute","whistle","ocarina","pad_2_warm","sitar","banjo","bagpipe","taiko_drum","woodblock","glockenspiel","music_box","vibraphone","marimba","celesta","kalimba","tubular_bells","oboe","clarinet","bassoon","english_horn","piccolo","tuba","pizzicato_strings","tremolo_strings","synth_strings_1","fiddle","koto","harmonica","reed_organ","drawbar_organ","dulcimer","melodic_tom"]);
+const NRE = /^([A-G][#b]?)(\d)([qehws]?)([-!]{0,2})$/;
+const RRE = /^R([qehws])$/i;
+const CRE = /^([A-G][#b]?)(maj7|min7|sus2|sus4|dim7|maj|min|m7|dim|aug|7|5|m)?(\d+(?:\.\d+)?)?$/;
+
+const $ = {
+  model: document.getElementById("model"), prompt: document.getElementById("prompt"), go: document.getElementById("go"),
+  status: document.getElementById("status"), score: document.getElementById("score"), list: document.getElementById("list"),
+  now: document.getElementById("now"), play: document.getElementById("play"), stop: document.getElementById("stop"),
+  dl: document.getElementById("dl"), time: document.getElementById("time"), chip: document.getElementById("chip"),
+  steps: document.getElementById("steps"), side: document.getElementById("side"), toggleSide: document.getElementById("toggleSide")
+};
+
+let ac=null, library=[], current=null, src=null, playTimer=null;
+
+$.toggleSide.onclick = () => { $.side.classList.toggle("hidden"); };
+
+function clearSteps(){ $.steps.innerHTML = ""; }
+function addStep(tag,title,body,kind){
+  const k=kind||"tool", el=document.createElement("div"); el.className="step k-"+k;
+  const C={tool:"bg-sky-500/20 text-sky-300 border-sky-500/30",model:"bg-purple-500/20 text-purple-300 border-purple-500/30",sys:"bg-emerald-500/20 text-emerald-300 border-emerald-500/30",err:"bg-red-500/20 text-red-300 border-red-500/30"}[k]||"";
+  el.innerHTML=`<div class="flex items-center gap-2"><span class="text-slate-500 text-[11px]">${new Date().toLocaleTimeString("es",{hour12:false})}</span><span class="px-1.5 py-0.5 rounded text-[10px] font-semibold border uppercase ${C}">${tag}</span></div><p class="text-slate-300 text-[11.5px] mt-1 break-words">${esc(title)}</p>`+(body?`<pre class="text-slate-400 text-[11px] whitespace-pre-wrap break-words max-h-40 overflow-auto mt-1">${esc(String(body).slice(0,2500))}</pre>`:"");
+  $.steps.appendChild(el); $.steps.scrollTop=$.steps.scrollHeight;
+}
+function st(t,k){ const a=document.getElementById("agentst"); if(a){ a.textContent=t.slice(0,60); document.getElementById("cardT").textContent=k==="ok"?"Listo":"Trabajando…"; document.getElementById("cardS").textContent=t.slice(0,80); } $.status.textContent=t; $.status.className="text-xs "+(k==="err"?"text-red-400":k==="ok"?"text-emerald-400":"text-slate-400"); }
+function fmt(s){ s=Math.max(0,s|0); return (s/60|0)+":"+String(s%60).padStart(2,"0"); }
+function mapInst(t){
+  t=(t||"").toLowerCase().trim().replace(/\s+/g,"_");
+  if(/flauta_dulce|recorder|flauta_de_pico/.test(t)) return "recorder";
+  if(/flauta|flute/.test(t)&&!/pan/.test(t)) return "flute";
+  if(ALIAS[t]) return ALIAS[t];
+  if(SF.has(t)) return t;
+  for(const k of Object.keys(ALIAS)) if(t.includes(k)) return ALIAS[k];
+  for(const k of SF) if(t.includes(k)) return k;
+  return "acoustic_grand_piano";
+}
+function parseNote(tok){ const m=NRE.exec(tok.trim()); if(!m||!(m[1]in NOTE)) return null; return {midi:NOTE[m[1]]+(+m[2]+1)*12,beats:DUR[m[3]||"q"],leg:m[4].includes("-"),acc:m[4].includes("!")}; }
+function parseChord(tok){ const m=CRE.exec(tok.trim()); if(!m||!(m[1]in NOTE)) return null; return {root:NOTE[m[1]]+48,iv:CQ[m[2]||""]||CQ[""],beats:m[3]?+m[3]:2}; }
+function parsePMNS(md){
+  const w={title:"Pieza",tempo:100,style:"",key:"",sections:[]};
+  const tm=md.match(/##\s*Tempo\s*\n\s*(\d+)/i); if(tm) w.tempo=Math.min(220,Math.max(40,+tm[1]));
+  const tt=md.match(/^\s*#\s+(.+)$/m); if(tt) w.title=tt[1].trim();
+  const st=md.match(/##\s*Estilo\s*\n([\s\S]*?)(?=\n##|\n###|$)/i); if(st) w.style=st[1].trim();
+  const ky=md.match(/##\s*Tonalidad\s*\n([\s\S]*?)(?=\n##|\n###|$)/i); if(ky) w.key=ky[1].trim();
+  const def=mapInst(w.style);
+  md.split(/###\s+/).slice(1).forEach(raw=>{
+    const L=raw.split("\n");
+    const s={name:L[0].trim(),instrument:def,tempo:w.tempo,notes:"",chords:"",dynamic:null,repeat:1,percusion:"ninguno",extra:{},chordInst:undefined};
+    L.slice(1).forEach(line=>{
+      const low=line.toLowerCase().trim();
+      const mt=line.match(/^\s*(instrumento|notas)([23])\s*:\s*(.*)$/i);
+      if(mt){ const o=(s.extra[mt[2]]=s.extra[mt[2]]||{}); if(mt[1].toLowerCase()==="notas") o.notes=mt[3].trim(); else o.inst=mapInst(mt[3]); return; }
+      if(/^\s*acordes_instrumento\s*:/i.test(line)){ const v=line.split(":")[1].trim().toLowerCase(); s.chordInst=/ning|^no/.test(v)?null:mapInst(v); return; }
+      if(low.startsWith("notas:")) s.notes=line.split(":").slice(1).join(":").trim();
+      else if(low.startsWith("acordes:")) s.chords=line.split(":").slice(1).join(":").trim();
+      else if(low.startsWith("instrumento:")) s.instrument=mapInst(line.split(":").slice(1).join(":"));
+      else if(low.startsWith("tempo:")){ const m=line.match(/(\d+)/); if(m) s.tempo=+m[1]; }
+      else if(low.startsWith("dinamica")||low.startsWith("dinámica")){ const d=line.split(":")[1].trim().toLowerCase(); if(DYN[d]) s.dynamic=d; }
+      else if(low.startsWith("repetir:")){ const m=line.match(/(\d+)/); s.repeat=m?Math.min(4,+m[1]):1; }
+      else if(low.startsWith("percusion")||low.startsWith("percusión")){ const p=line.split(":")[1].trim().toLowerCase(); s.percusion=["epica","marcha","pulso","ninguno"].includes(p)?p:"ninguno"; }
+    });
+    w.sections.push(s);
+  });
+  return w;
+}
+function buildEvents(w){
+  const ev=[]; let t=0, sd=7; const rnd=()=>(sd=(sd*16807)%2147483647)/2147483647;
+  const mel=(str,inst,start,beat,g,gm)=>{ let cur=start;
+    (str||"").replace(/\|/g," ").split(/\s+/).filter(Boolean).forEach(tok=>{
+      const rm=tok.match(RRE); if(rm){ cur+=DUR[rm[1].toLowerCase()]*beat; return; }
+      const n=parseNote(tok); if(!n) return; const d=n.beats*beat;
+      ev.push({t:Math.max(0,cur+(rnd()-.5)*.016),d:d*(n.leg?1.05:.92),midi:n.midi,inst,gain:Math.min(1,(g+(n.acc?.14:0))*gm*(.92+rnd()*.16))});
+      cur+=d; });
+    return cur; };
+  w.sections.forEach((sec,si)=>{
+    const beat=60/sec.tempo, g=sec.dynamic?DYN[sec.dynamic]:(.4+.5*(si/Math.max(w.sections.length-1,1)));
+    for(let r=0;r<sec.repeat;r++){
+      const start=t; let end=mel(sec.notes,sec.instrument,start,beat,g,1);
+      Object.values(sec.extra).forEach(x=>{ if(x.notes) end=Math.max(end,mel(x.notes,x.inst||sec.instrument,start,beat,g,.78)); });
+      const ci=sec.chordInst===undefined?"orchestral_harp":sec.chordInst;
+      if(sec.chords&&ci){
+        const pad=/string|organ|choir|pad|brass|horn|cello|viola|tremolo/.test(ci); let ct=start;
+        sec.chords.replace(/\|/g," ").split(/\s+/).filter(Boolean).forEach(tok=>{
+          const c=parseChord(tok); if(!c) return; const cd=c.beats*beat;
+          if(pad) c.iv.forEach(o=>ev.push({t:ct,d:cd*.98,midi:c.root+o,inst:ci,gain:g*.3}));
+          else { const tn=[...c.iv,c.iv[0]+12]; for(let k=0,x=ct;x<ct+cd-1e-6;k++,x+=beat/2) ev.push({t:x,d:beat*.9,midi:c.root+tn[[0,1,2,1,3,2,1,2][k%8]%tn.length],inst:ci,gain:g*(k%2?.26:.34)}); }
+          ev.push({t:ct,d:Math.min(cd,beat*1.8),midi:Math.max(28,c.root-24),inst:"acoustic_bass",gain:g*.55});
+          ct+=cd; }); }
+      if(sec.percusion==="epica"||sec.percusion==="marcha"){
+        const step=(sec.percusion==="epica"?2:1)*beat;
+        for(let p=start;p<end;p+=step) ev.push({t:p,d:.15,midi:41,inst:"timpani",gain:g*.75}); }
+      if(sec.percusion==="pulso") for(let p=start,k=0;p<end;p+=beat,k++) ev.push({t:p,d:.1,midi:72,inst:"woodblock",gain:g*(k%4?.3:.5)});
+      t=end; } });
+  return {events:ev,duration:t};
+}
+
+const SFURL=n=>"https://cdn.jsdelivr.net/gh/gleitz/midi-js-soundfonts@gh-pages/FluidR3_GM/"+n+"-mp3.js";
+const sfRaw={}, sfBuf={}, sfKeys={};
+const PAN={recorder:-.1,flute:.15,acoustic_guitar_nylon:-.35,orchestral_harp:.35,violin:.3,cello:-.25,french_horn:-.2,trumpet:.2,woodblock:.3,oboe:.2,clarinet:-.2};
+const nearest=(keys,m)=>keys.reduce((b,k)=>Math.abs(k-m)<Math.abs(b-m)?k:b,keys[0]);
+const midiOf=k=>{ const m=/^([A-G][#b]?)(\d)$/.exec(k); return NOTE[m[1]]+(+m[2]+1)*12; };
+async function ensureAC(){ if(!ac) ac=new (window.AudioContext||window.webkitAudioContext)({sampleRate:44100}); if(ac.state==="suspended") await ac.resume(); return ac; }
+async function loadInst(name,midis){
+  if(!sfRaw[name]){
+    const r=await fetch(SFURL(name)); if(!r.ok) throw new Error("HTTP "+r.status+" "+name);
+    const txt=await r.text(), map={};
+    for(const m of txt.matchAll(/"([A-G][b#]?\d)"\s*:\s*"data:audio\/[a-z0-9]+;base64,([^"]+)"/g)) map[midiOf(m[1])]=m[2];
+    if(!Object.keys(map).length) throw new Error("sin muestras "+name);
+    sfRaw[name]=map; sfBuf[name]={}; sfKeys[name]=Object.keys(map).map(Number);
+  }
+  for(const k of new Set(midis.map(m=>nearest(sfKeys[name],m)))){
+    if(sfBuf[name][k]) continue;
+    const bin=atob(sfRaw[name][k]), u=new Uint8Array(bin.length); for(let i=0;i<bin.length;i++) u[i]=bin.charCodeAt(i);
+    sfBuf[name][k]=await ac.decodeAudioData(u.buffer);
+  }
+}
+function impulse(c){ const n=c.sampleRate*2.2|0, b=c.createBuffer(2,n,c.sampleRate); for(let ch=0;ch<2;ch++){ const d=b.getChannelData(ch); for(let i=0;i<n;i++) d[i]=(Math.random()*2-1)*Math.pow(1-i/n,2.6); } return b; }
+async function render(item){
+  await ensureAC();
+  const need=()=>{ const o={}; item.events.forEach(e=>(o[e.inst]=o[e.inst]||[]).push(e.midi)); return o; };
+  const names=Object.keys(need());
+  for(let i=0;i<names.length;i++){ const n=names[i]; st("Cargando instrumento "+n+" ("+(i+1)+"/"+names.length+")…");
+    try{ await loadInst(n,need()[n]); }catch(err){ addStep("error","Instrumento "+n+" no disponible, uso piano",String(err.message||err),"err"); item.events.forEach(e=>{ if(e.inst===n) e.inst="acoustic_grand_piano"; }); } }
+  for(const [n,ms] of Object.entries(need())) await loadInst(n,ms);
+  st("Mezclando todas las pistas…");
+  const sr=ac.sampleRate, oc=new OfflineAudioContext(2,Math.ceil((item.duration+3.2)*sr),sr);
+  const comp=oc.createDynamicsCompressor(); comp.threshold.value=-18; comp.ratio.value=3; comp.connect(oc.destination);
+  const rev=oc.createConvolver(); rev.buffer=impulse(oc); const rg=oc.createGain(); rg.gain.value=.2; rev.connect(rg); rg.connect(comp);
+  const buses={}, bus=n=>buses[n]||(()=>{ const p=oc.createStereoPanner(); p.pan.value=PAN[n]||0; const g=oc.createGain(); g.connect(p); p.connect(comp); p.connect(rev); return buses[n]=g; })();
+  item.events.forEach(e=>{
+    const k=nearest(sfKeys[e.inst],e.midi), s=oc.createBufferSource(); s.buffer=sfBuf[e.inst][k]; s.playbackRate.value=Math.pow(2,(e.midi-k)/12);
+    const g=oc.createGain(), t=e.t+.05, end=t+e.d, rel=.35;
+    g.gain.setValueAtTime(0,t); g.gain.linearRampToValueAtTime(e.gain,t+.01); g.gain.setValueAtTime(e.gain,end); g.gain.linearRampToValueAtTime(.0001,end+rel);
+    s.connect(g); g.connect(bus(e.inst)); s.start(t); s.stop(end+rel+.05); });
+  const buf=await oc.startRendering(); let pk=0;
+  for(let c=0;c<2;c++){ const d=buf.getChannelData(c); for(let i=0;i<d.length;i++) pk=Math.max(pk,Math.abs(d[i])); }
+  if(pk>0){ const k=.92/pk; for(let c=0;c<2;c++){ const d=buf.getChannelData(c); for(let i=0;i<d.length;i++) d[i]*=k; } }
+  return buf;
+}
+function i16(f){ const o=new Int16Array(f.length); for(let i=0;i<f.length;i++){ const x=Math.max(-1,Math.min(1,f[i])); o[i]=x<0?x*32768:x*32767; } return o; }
+function toMP3(b){
+  if(!window.lamejs) return null;
+  const enc=new lamejs.Mp3Encoder(2,b.sampleRate,192), L=i16(b.getChannelData(0)), R=i16(b.getChannelData(1)), out=[];
+  for(let i=0;i<L.length;i+=1152){ const x=enc.encodeBuffer(L.subarray(i,i+1152),R.subarray(i,i+1152)); if(x.length) out.push(new Uint8Array(x)); }
+  const f=enc.flush(); if(f.length) out.push(new Uint8Array(f)); return new Blob(out,{type:"audio/mpeg"});
+}
+function toWAV(b){
+  const L=i16(b.getChannelData(0)), R=i16(b.getChannelData(1)), n=L.length, v=new DataView(new ArrayBuffer(44+n*4));
+  const w=(o,s)=>[...s].forEach((c,i)=>v.setUint8(o+i,c.charCodeAt(0)));
+  w(0,"RIFF"); v.setUint32(4,36+n*4,true); w(8,"WAVEfmt "); v.setUint32(16,16,true); v.setUint16(20,1,true); v.setUint16(22,2,true);
+  v.setUint32(24,b.sampleRate,true); v.setUint32(28,b.sampleRate*4,true); v.setUint16(32,4,true); v.setUint16(34,16,true); w(36,"data"); v.setUint32(40,n*4,true);
+  for(let i=0;i<n;i++){ v.setInt16(44+i*4,L[i],true); v.setInt16(46+i*4,R[i],true); }
+  return new Blob([v.buffer],{type:"audio/wav"});
+}
+async function toWebM(b){
+  await ensureAC(); const d=ac.createMediaStreamDestination(), s=ac.createBufferSource(); s.buffer=b; s.connect(d);
+  const mt=["audio/webm;codecs=opus","audio/webm"].find(m=>MediaRecorder.isTypeSupported(m)), ch=[];
+  const rec=new MediaRecorder(d.stream,{mimeType:mt,audioBitsPerSecond:192000}); rec.ondataavailable=e=>{ if(e.data.size) ch.push(e.data); };
+  const done=new Promise(r=>rec.onstop=r); rec.start(250); s.start(); s.onended=()=>setTimeout(()=>rec.stop(),300); await done;
+  return new Blob(ch,{type:"audio/webm"});
+}
+async function exportItem(item,kind){
+  if(!item) return st("No hay pieza","err");
+  try{
+    if(!item.buffer) item.buffer=await render(item);
+    let blob;
+    if(kind==="webm"){ st("Grabando WebM en tiempo real ("+fmt(item.duration+3)+")…"); blob=await toWebM(item.buffer); }
+    else { st("Codificando "+kind.toUpperCase()+"…"); await new Promise(r=>setTimeout(r,30)); blob=kind==="mp3"?toMP3(item.buffer):null;
+      if(kind==="mp3"&&!blob){ addStep("error","lamejs no cargó (¿CDN bloqueado?)","Descargo WAV en su lugar","err"); kind="wav"; }
+      if(kind==="wav") blob=toWAV(item.buffer); }
+    const a=document.createElement("a"); a.href=URL.createObjectURL(blob); a.download=(item.title||"aether").replace(/[^\w\- áéíóúñ]/gi,"")+"."+kind; a.click();
+    st("Descarga lista ("+kind.toUpperCase()+", "+(blob.size/1048576).toFixed(1)+" MB)","ok");
+  }catch(e){ st(String(e.message||e),"err"); }
+}
+function stopPlay(){ hl(-1); if(src){ try{src.stop();}catch(e){} src=null; } if(playTimer){ clearInterval(playTimer); playTimer=null; } }
+const hue=h=>{ let x=0; for(const c of String(h)) x=(x*31+c.charCodeAt(0))%360; return x; };
+const grad=t=>`linear-gradient(135deg,hsl(${hue(t)} 70% 45%),hsl(${(hue(t)+70)%360} 70% 22%))`;
+let SHEET=[], HLid=null, HLsys=null;
+const blen=str=>(str||"").replace(/\|/g," ").split(/\s+/).filter(Boolean).reduce((a,tok)=>{ const rm=tok.match(RRE); if(rm) return a+DUR[rm[1].toLowerCase()]; const n=parseNote(tok); return a+(n?n.beats:0); },0);
+function hl(e){
+  let id=null;
+  if(e>=0) for(const s of SHEET){ if(e>=s.s&&e<s.s+s.len*s.rep){ const b=((e-s.s)%s.len)/s.bt, n=s.ns.find(n=>b>=n.t-1e-6&&b<n.t+n.b-1e-6); if(n) id=n.id; break; } }
+  if(id===HLid) return;
+  if(HLid){ const o=document.getElementById(HLid); if(o) o.classList.remove("on"); }
+  HLid=id; if(!id) return; const el=document.getElementById(id); if(!el) return; el.classList.add("on");
+  const sy=el.closest("svg"); if(sy!==HLsys){ HLsys=sy; if(!document.getElementById("p-score").classList.contains("hidden")) sy.parentElement.scrollIntoView({block:"center",behavior:"smooth"}); }
+}
+function sheet(it){
+  SHEET=[]; HLid=null; let T0=0;
+  const w=parsePMNS(it.md), LI=[0,1,1,2,2,3,4,4,5,5,6,6], AC=[0,1,0,1,0,0,1,0,1,0,1,0], B=95; let out="";
+  w.sections.forEach((sec,si)=>{
+    const ns=[]; let t=0;
+    (sec.notes||"").replace(/\|/g," ").split(/\s+/).filter(Boolean).forEach(tok=>{ const rm=tok.match(RRE); if(rm){ const d=DUR[rm[1].toLowerCase()]; ns.push({r:1,t,b:d,i:ns.length}); t+=d; return; } const n=parseNote(tok); if(!n) return; ns.push({t,m:n.midi,b:n.beats,i:ns.length}); t+=n.beats; });
+    const nb=Math.max(1,Math.ceil(t/4)), bt=60/sec.tempo, LN=Math.max(blen(sec.notes),...Object.values(sec.extra).map(x=>blen(x.notes)))*bt;
+    SHEET.push({s:T0,len:LN||1,rep:sec.repeat,bt,ns:ns.map(n=>({id:"n"+si+"_"+n.i,t:n.t,b:n.b}))}); T0+=LN*sec.repeat; let svgs="";
+    for(let sy=0;sy<nb;sy+=4){
+      let g=""; for(let i=0;i<5;i++) g+=`<line x1="0" x2="900" y1="${B-i*14}" y2="${B-i*14}" stroke-width="1"/>`;
+      g+=`<text x="10" y="${B-12}" font-size="40" fill="#818cf8" stroke="none" font-family="serif">𝄞</text>`; if(!sy) g+=`<text x="56" y="${B-30}" font-size="16" fill="#a78bfa" stroke="none" font-weight="bold">4</text><text x="56" y="${B-10}" font-size="16" fill="#a78bfa" stroke="none" font-weight="bold">4</text>`;
+      for(let k=1;k<=4&&sy+k<=nb;k++) g+=`<line x1="${70+k*205}" x2="${70+k*205}" y1="${B-56}" y2="${B}" stroke="#64748b" stroke-width="1.2"/>`;
+      ns.filter(n=>Math.floor(n.t/4)>=sy&&Math.floor(n.t/4)<sy+4).forEach(n=>{
+        if(n.r){ const rx=70+(Math.floor(n.t/4)-sy)*205+14+(n.t%4)/4*180, rc="#94a3b8";
+          g+=`<g id="n${si}_${n.i}">`+(n.b>=4?`<rect x="${rx-6}" y="${B-42}" width="12" height="4" fill="${rc}" stroke="none"/>`:n.b>=2?`<rect x="${rx-6}" y="${B-32}" width="12" height="4" fill="${rc}" stroke="none"/>`:n.b>=1?`<path d="M${rx-3} ${B-46} l6 7 l-5 6 l6 7" stroke="${rc}" stroke-width="2" fill="none"/>`:`<rect x="${rx-3}" y="${B-31}" width="6" height="4" fill="${rc}" stroke="none"/>`)+"</g>"; return; }
+        const st=Math.max(18,Math.min(46,(Math.floor(n.m/12)-1)*7+LI[n.m%12])), y=B-(st-30)*7, x=70+(Math.floor(n.t/4)-sy)*205+14+(n.t%4)/4*180, c=n.b>=2?"#c084fc":n.b>=1?"#38bdf8":"#818cf8";
+        g+=`<g id="n${si}_${n.i}">`;
+        for(let ly=B+14;ly<=y+1;ly+=14) g+=`<line x1="${x-9}" x2="${x+9}" y1="${ly}" y2="${ly}" stroke-width="1"/>`; for(let ly=B-70;ly>=y-1;ly-=14) g+=`<line x1="${x-9}" x2="${x+9}" y1="${ly}" y2="${ly}" stroke-width="1"/>`;
+        if(AC[n.m%12]) g+=`<text x="${x-17}" y="${y+5}" font-size="14" fill="${c}" stroke="none">♭</text>`;
+        g+=`<ellipse cx="${x}" cy="${y}" rx="5.5" ry="4.2" fill="${n.b>=2?"none":c}" stroke="${c}" stroke-width="1.5" transform="rotate(-18 ${x} ${y})"/>`;
+        if(n.b<4){ const up=y>B-28; g+=`<line x1="${up?x+5:x-5}" x2="${up?x+5:x-5}" y1="${y}" y2="${up?y-28:y+28}" stroke="${c}" stroke-width="1.5"/>`; if(n.b<1) g+=`<path d="M${up?x+5:x-5} ${up?y-28:y+28} q8 7 5 14" stroke="${c}" fill="none" stroke-width="1.5"/>`; } g+="</g>"; });
+      svgs+=`<div class="relative mb-3"><span class="absolute -left-1 top-0 text-[10px] font-mono text-slate-500">${sy+1}</span><svg viewBox="0 0 900 130" class="w-full h-28 stroke-sky-400/40" fill="none">${g}</svg></div>`; }
+    out+=`<div class="mb-6"><div class="flex justify-between items-center border-b border-white/[0.04] pb-2 mb-2"><div><span class="text-sm font-semibold text-slate-200">${esc(sec.name)}</span> <span class="text-[11px] text-violet-300 font-mono ml-2">${esc(sec.instrument)}</span></div><div class="font-mono text-[11px] text-cyan-300">${sec.dynamic?esc(sec.dynamic)+" · ":""}♩ = ${sec.tempo}</div></div>${svgs}</div>`; });
+  return out;
+}
+const coverUrl=it=>"https://image.pollinations.ai/prompt/"+encodeURIComponent("album cover art, "+it.title+", "+(it.style||"instrumental music")+", atmospheric digital painting, cinematic lighting, no text, no letters")+"?width=512&height=512&nologo=true&seed="+(it.seed||hue(it.title)+1);
+const cov=(it,cls)=>`<img src="${coverUrl(it)}" loading="lazy" referrerpolicy="no-referrer" class="${cls}" onerror="this.style.display='none'" alt="">`;
+const esc=x=>String(x).replace(/&/g,"&amp;").replace(/</g,"&lt;");
+let vg=null; const G=id=>document.getElementById(id);
+function drawWave(it,p){
+  const c=G("wave"), W=c.clientWidth, H=c.clientHeight, dpr=devicePixelRatio||1; if(!W) return;
+  c.width=W*dpr; c.height=H*dpr; const g=c.getContext("2d"); g.scale(dpr,dpr); const N=140, bw=W/N;
+  if(it&&it.buffer&&!it.peaks){ const d=it.buffer.getChannelData(0), step=Math.floor((it.duration*it.buffer.sampleRate)/N)||1; it.peaks=[]; for(let i=0;i<N;i++){ let m=0; for(let j=i*step;j<(i+1)*step&&j<d.length;j+=16) m=Math.max(m,Math.abs(d[j])); it.peaks.push(m); } }
+  for(let i=0;i<N;i++){ const v=it&&it.peaks?Math.max(.06,it.peaks[i]):.06, h=Math.max(2,v*H*.95); g.fillStyle=i/N<p?`hsl(${190+i/N*100} 85% 62%)`:"#334155"; g.fillRect(i*bw+.5,(H-h)/2,bw*.6,h); }
+}
+function drawRoll(){
+  const it=current, c=G("roll"); if(!it||!c.clientWidth) return; const dpr=devicePixelRatio||1, W=c.clientWidth, H=c.clientHeight;
+  c.width=W*dpr; c.height=H*dpr; const g=c.getContext("2d"); g.scale(dpr,dpr);
+  const ms=it.events.map(e=>e.midi), lo=Math.min(...ms)-1, hi=Math.max(...ms)+1, rh=H/(hi-lo+1);
+  it.events.forEach(e=>{ let h=0; for(const ch of e.inst) h=(h*31+ch.charCodeAt(0))%360; g.fillStyle=`hsla(${h},80%,65%,${.35+e.gain*.6})`; g.fillRect(e.t/it.duration*W,H-(e.midi-lo+1)*rh,Math.max(1.5,e.d/it.duration*W),Math.max(1.5,rh-.5)); });
+}
+function drawAna(){
+  const it=current, box=G("ana"); if(!it) return; const w=parsePMNS(it.md), insts=[...new Set(it.events.map(e=>e.inst))];
+  box.innerHTML=`<div class="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-4">`+[["Duración",it.durLabel],["Tempo",it.tempo+" BPM"],["Notas",it.events.length],["Instrumentos",insts.length]].map(([a,b])=>`<div class="p-3 rounded-xl bg-white/[0.03] border border-white/[0.08]"><div class="text-[10px] uppercase text-slate-500">${a}</div><div class="text-lg font-mono text-white">${b}</div></div>`).join("")+`</div><div class="flex flex-wrap gap-1.5 mb-4">`+insts.map(i=>`<span class="px-2 py-0.5 rounded-full text-[11px] bg-violet-950/60 text-violet-300 border border-violet-700/40">${esc(i)}</span>`).join("")+`</div><table class="w-full text-xs"><thead class="text-slate-500 text-left"><tr><th class="py-1">Sección</th><th>Instrumentos</th><th>Din.</th><th>Perc.</th><th>Rep.</th></tr></thead><tbody>`+w.sections.map(s=>`<tr class="border-t border-white/[0.05]"><td class="py-1.5 text-slate-200">${esc(s.name)}</td><td class="text-slate-400">${esc([s.instrument,...Object.values(s.extra).map(x=>x.inst)].filter(Boolean).join(", "))}</td><td>${s.dynamic||"auto"}</td><td>${s.percusion}</td><td>${s.repeat}</td></tr>`).join("")+`</tbody></table>`;
+}
+function showItem(it){
+  G("title").textContent=it.title; $.now.textContent=it.title; G("meta").textContent=[(it.style||"").slice(0,60),it.tempo+" BPM",it.key].filter(Boolean).join(" • ");
+  $.score.textContent=it.md; G("sheet").innerHTML=sheet(it); G("thumb").style.background=grad(it.title); G("thumb").innerHTML="♪"+cov(it,"absolute inset-0 w-full h-full object-cover"); const hc=G("hcover"); hc.classList.remove("hidden"); hc.innerHTML=cov(it,"w-full h-full object-cover"); drawRoll(); drawAna(); drawWave(it,0); renderList();
+}
+async function playItem(item,off=0){
+  stopPlay(); current=item; showItem(item);
+  try{ await ensureAC(); if(!item.buffer) item.buffer=await render(item); }catch(e){ st(String(e.message||e),"err"); return; }
+  stopPlay(); if(!vg){ vg=ac.createGain(); vg.gain.value=+G("vol").value; vg.connect(ac.destination); }
+  const s=ac.createBufferSource(); s.buffer=item.buffer; s.connect(vg); s.start(0,off); src=s; const t0=ac.currentTime-off; st("Reproduciendo","ok");
+  const tick=()=>{ const e=ac.currentTime-t0; $.time.textContent=fmt(e)+" / "+item.durLabel; drawWave(item,e/item.duration); hl(e-.05); G("head").style.left=Math.min(100,e/item.duration*100)+"%"; if(e>item.duration+1) stopPlay(); };
+  tick(); playTimer=setInterval(tick,200);
+}
+function renderList(){
+  const q=(G("q").value||"").toLowerCase(), arr=library.map((it,i)=>[it,i]).filter(([it])=>!q||(it.title+it.style).toLowerCase().includes(q));
+  if(!arr.length){ $.list.innerHTML='<div class="text-xs text-slate-500 p-2">Sin piezas todavía</div>'; return; }
+  $.list.innerHTML=arr.map(([it,i])=>`<div class="p-2.5 rounded-xl border ${it===current?"card-active":"border-white/[0.05] bg-[#0e1226]/50 hover:bg-[#12162f]"} flex items-center gap-3 cursor-pointer group" data-i="${i}"><div class="relative overflow-hidden w-12 h-12 rounded-lg shrink-0 border border-white/[0.08] flex items-center justify-center text-white/80" style="background:${grad(it.title)}">♪${cov(it,"absolute inset-0 w-full h-full object-cover")}</div><div class="min-w-0 flex-1"><h3 class="text-xs font-semibold text-white truncate">${esc(it.title)}</h3><div class="flex gap-1 mt-0.5 overflow-hidden">${(it.style||"").split(/[,.\s]+/).filter(x=>x.length>3).slice(0,2).map(x=>`<span class="px-1.5 rounded text-[9px] bg-violet-950/60 text-violet-300 border border-violet-700/40">${esc(x)}</span>`).join("")}</div><p class="text-[10px] text-slate-500 font-mono mt-1">${it.tempo} BPM • ${esc(it.key||"")} • ${it.durLabel}</p></div><button class="px-2 py-1 rounded-lg text-[10px] border border-white/10 text-slate-300 hover:text-white opacity-60 group-hover:opacity-100" data-d="${i}">MP3</button></div>`).join("");
+  $.list.querySelectorAll("[data-d]").forEach(b=>b.onclick=e=>{ e.stopPropagation(); exportItem(library[+b.dataset.d],"mp3"); });
+  $.list.querySelectorAll("[data-i]").forEach(el=>el.onclick=()=>playItem(library[+el.dataset.i]));
+}
+
+function cleanScore(text){
+  const t=text.trim();
+  if(/^lo siento no puedo hacer eso/i.test(t)&&!/notas:/i.test(t)) return "lo siento no puedo hacer eso";
+  const i=t.indexOf("#"); if(i<0) return null;
+  let md=t.slice(i); if(md.includes("```")) md=md.slice(0,md.indexOf("```"));
+  return /notas:/i.test(md)?md.trim():null;
+}
+
+function toolStyle(name){
+  const n=(name||"").toLowerCase();
+  if(/flauta|recorder|dulce/.test(n)) return "Estilo cantiga / solo de flauta dulce.\nModo: D dorico o A eolico.\nTempo: 72-96.\nInstrumento principal: recorder. Acomp opcional: orchestral_harp (el motor puede omitir en solista).\nForma: frases con respiracion Rq, motivo con salto de 4a/5a, estribillo tarareable.\nEvitar: escalas D-E-F-G-A, arpegios en bucle, sin cadencias.\nRegistro comodo: C4-A5.";
+  if(/medieval|epica|épica/.test(n)) return "Medieval epico modal.\nModo: D dorico.\nTempo: 84-96.\nInstrumentos: acoustic_guitar_nylon, recorder, orchestral_harp, string_ensemble_1, cello, timpani, church_organ.\nProgresiones: Dm-C-Bb-A, Dm-Bb-F-C.\nEvitar: I-V-vi-IV pop, maj7 brillantes.\nMotivos con 4as/5as, drones, climax con cuerdas/brass.";
+  if(/western/.test(n)) return "Western: E eolico o G mixolidio, tempo 96-120, guitar nylon + trumpet + bass, intervalos amplios.";
+  return "Estilo general modal. Usa dorico/eolico si suena antiguo o serio. Define motivo con salto, frases pregunta/respuesta, estribillo distinto. Evita escalas mecanicas.";
+}
+function toolMotif(arg){
+  const a=(arg||"").toLowerCase();
+  if(/doric|dorico|dm|d minor|dorian/.test(a))
+    return "Motivos en D dorico (elige UNO; cada seccion lo transforma, no lo copia):\n"+
+      "A) D4q A3e D4e F4q   — salto de 5a, caracter fuerte\n"+
+      "B) F4q C4e A3e D4q E4e C4q  — descenso y resolucion\n"+
+      "C) A4e D5e F5q E5e C5e A4q  — registro medio-agudo, cantabile\n"+
+      "Transformaciones: secuencia (+2/+3 grados), inversion, ritmo e-q-e, fragmento de 3 notas en intro.\nProhibido rellenar con D-E-F-G-A-Bb-C.";
+  return "Motivos candidatos para ["+arg+"]:\n1) Tonica q, 5a grave e, tonica e, 3a q\n2) 3a q, 5a e, 3a e, 2a q, tonica e, 7a modal q\n3) 5a e, 8a e, 3a q, 2a e, tonica q\nElige uno con al menos un salto. Transforma en cada seccion.";
+}
+function toolPhrase(arg){
+  return "Plan de frases sobre: "+(arg||"motivo")+"\n"+
+    "Intro: 1 frase corta = fragmento del motivo; termina abierto; Rq.\n"+
+    "Verso1: frase-pregunta (motivo) + frase-respuesta (cae a tonica con h).\n"+
+    "Verso2: secuencia del motivo a otra altura O inversion; cadencia distinta.\n"+
+    "Estribillo: gancho NUEVO con salto grande o ritmo caracteristico; debe poder tararearse.\n"+
+    "Puente: registro distinto, mas e, tension (no resuelvas a tonica del todo).\n"+
+    "Retorno: estribillo o verso con ornamentacion minima.\n"+
+    "Final: motivo reducido + tonica larga (h/w) + Rq.\n"+
+    "Entre frases: Rq. Max 4-5 grados conjuntos seguidos.";
+}
+function toolProgression(arg){
+  if(/medieval|epica|doric|dorico|recorder|flauta/.test((arg||"").toLowerCase()))
+    return "Progresiones modales:\nDm2 C2 Bb2 A2\nDm2 Bb2 F2 C2\nDm2 Am2 Bb2 F2\nBb2 Gm2 Dm2 A2\nUsa 2-4 acordes/seccion. La A mayor sobre Dm genera tension doria.";
+  return "Dm2 Bb2 F2 C2 | Am2 F2 C2 G2 | Em2 C2 G2 D2";
+}
+function toolValidate(md){
+  const w=parsePMNS(md); const err=[];
+  if(!w.sections.length) err.push("sin secciones");
+  const style=(w.style||"").toLowerCase();
+  const wantMulti=/la[uú]d|cuerda|string|harp|arpa|cello|organ|brass|nylon|guitar/.test(style);
+  const insts=new Set(w.sections.map(s=>s.instrument));
+  if(wantMulti && insts.size<2) err.push("El estilo pide varios instrumentos pero casi todo es el mismo; usa al menos 2-3 ids distintos entre secciones");
+  w.sections.forEach(s=>{
+    if(!s.notes) err.push(s.name+": sin notas");
+    const name=(s.name||"").toLowerCase();
+    const isShort=/intro|final|outro|coda/.test(name);
+    const mel=s.notes.replace(/\|/g," ").split(/\s+/).filter(x=>x&&!/^R/i.test(x));
+    const minN=isShort?5:10;
+    if(mel.length<minN) err.push(s.name+": pocas notas melodicas (min "+minN+"); alarga con TRANSFORMACION del motivo, NUNCA con escala D-E-F-G-A");
+    const midis=[]; mel.forEach(tok=>{ const n=parseNote(tok); if(n) midis.push(n.midi); });
+    let step=0,tot=0, leaps=0, run=0, maxRun=0;
+    for(let i=1;i<midis.length;i++){
+      const d=Math.abs(midis[i]-midis[i-1]);
+      if(d>0){ tot++; if(d<=2){ step++; run++; maxRun=Math.max(maxRun,run);} else { leaps++; run=0; } }
+    }
+    if(tot>6 && step/tot>0.75) err.push(s.name+": excesivo grado conjunto (parece escala)");
+    if(maxRun>=6) err.push(s.name+": hay una corrida de escala de "+maxRun+" notas; rompela con un salto o Rq");
+    if(tot>6 && leaps<1) err.push(s.name+": sin saltos melodicos");
+  });
+  const sigs=w.sections.map(s=>(s.notes||"").replace(/\|/g," ").split(/\s+/).filter(x=>x&&!/^R/i.test(x)).slice(0,6).join(" "));
+  if(new Set(sigs).size<Math.max(3,Math.floor(sigs.length*0.55))) err.push("secciones demasiado similares");
+  const dur=buildEvents(w).duration; if(dur<45) err.push("duracion "+dur.toFixed(0)+"s: demasiado corta (minimo 45s); agrega secciones con material NUEVO");
+  const nl=w.sections.map(s=>s.notes.trim()); if(new Set(nl).size<nl.length) err.push("hay secciones con las MISMAS notas copiadas; reescribe con variacion real");
+  w.sections.forEach(s=>{ const ds=new Set((s.notes.match(/[A-G][#b]?\d[ehqws]?|R[ehqws]/g)||[]).map(x=>x.replace(/^[A-G][#b]?\d|^R/,"")||"q")); if(ds.size<2) err.push(s.name+": ritmo monotono"); });
+  const nI=new Set(w.sections.flatMap(s=>[s.instrument,...Object.values(s.extra).map(x=>x.inst).filter(Boolean)])); if(!/solo/.test(style)&&nI.size<3) err.push("usa al menos 3 instrumentos distintos (melodia, instrumento2/notas2, acordes_instrumento)");
+  (REQ.inst||[]).forEach(i=>{ if(!nI.has(i)) err.push("falta el instrumento pedido por el usuario: "+i+" (debe sonar como instrumento o instrumento2/3)"); });
+  const mm=(REQ.raw||"").match(/(\d+)\s*min/i); if(mm&&dur<mm[1]*60*.8) err.push("el usuario pidio "+mm[1]+" min y la pieza dura "+fmt(dur)+"; alargala con material nuevo");
+  const kn=(w.key||"").normalize("NFD").replace(/[\u0300-\u036f]/g,"").toLowerCase().replace(/minor/,"menor").replace(/major/,"mayor"), set=/[a-g]/i.test(kn)&&/jonic|mayor|dorico|frigio|lidio|mixolidio|eolico|menor|locrio/.test(kn)?new Set(toolScale(w.key).split("\n")[0].split(": ")[1].split(" ").map(x=>NOTE[x])):null;
+  let bad=0,tot=0; const grams=[];
+  w.sections.forEach(s=>{ const m=(s.notes.match(/\S+/g)||[]).map(parseNote).filter(Boolean).map(n=>n.midi);
+    if(m.length>=8&&Math.max(...m)-Math.min(...m)<7) err.push(s.name+": registro demasiado estrecho (usa al menos una sexta de rango)");
+    let run=1; for(let i=1;i<m.length;i++){ const d=Math.abs(m[i]-m[i-1]); run=d>0&&d<=2?run+1:1; if(run>5){ err.push(s.name+": linea de escala (mas de 5 grados conjuntos seguidos); usa saltos y motivos"); break; } }
+    if(set) m.forEach(x=>{ tot++; if(!set.has(x%12)) bad++; });
+    for(let i=0;i+4<m.length;i++) grams.push([1,2,3,4].map(j=>m[i+j]-m[i+j-1]).join(",")); });
+  if(set&&tot&&bad/tot>.2) err.push(Math.round(bad/tot*100)+"% de las notas estan fuera de "+w.key+"; usa TOOL_SCALE y respeta el modo (cromatismos solo de paso)");
+  if(grams.length>12&&new Set(grams).size/grams.length<.6) err.push("melodia repetitiva: demasiadas figuras melodicas iguales; usa TOOL_VARY y cambia contorno y ritmo");
+  return err.length?"ERRORES:\n"+err.map(e=>"- "+e).join("\n")+"\nCorrige sin rellenar con escalas: repite el motivo transformado (secuencia, inversion, otro ritmo).":"OK: estructura y diversidad basica aceptables";
+}
+
+function toolVary(arg){
+  const [tec,...r]=(arg||"").split("|"), T=(tec||"").toLowerCase(), toks=r.join("|").trim().split(/\s+/).filter(Boolean);
+  const NN=["C","Db","D","Eb","E","F","Gb","G","Ab","A","Bb","B"], nm=m=>NN[((m%12)+12)%12]+(Math.floor(m/12)-1), L="sehqw", ch=(c,k)=>L[Math.max(0,Math.min(4,L.indexOf(c||"q")+k))];
+  const f=toks.map(parseNote).find(Boolean); if(!f) return "Formato: TOOL_VARY: secuencia +2 | D4q A3e D4e F4q";
+  const m0=f.midi, sh=+((T.match(/[+-]?\d+/)||[0])[0]), k=/aum/.test(T)?1:/dis/.test(T)?-1:0;
+  let out=toks.map(t=>{ const rm=RRE.exec(t); if(rm) return k?"R"+ch(rm[1].toLowerCase(),k):t;
+    const n=parseNote(t); if(!n) return t; const m=NRE.exec(t); let mid=n.midi, d=m[3]||"q";
+    if(/sec/.test(T)) mid+=sh; if(/inv/.test(T)) mid=2*m0-mid; if(k) d=ch(d,k); return nm(mid)+d+m[4]; });
+  if(/retro/.test(T)) out.reverse();
+  return (tec||"").trim()+" →\n"+out.join(" ")+"\n(Adapta y combina; no pegues el original igual.)";
+}
+function toolScale(arg){
+  const MODES={jonico:[0,2,4,5,7,9,11],mayor:[0,2,4,5,7,9,11],dorico:[0,2,3,5,7,9,10],frigio:[0,1,3,5,7,8,10],lidio:[0,2,4,6,7,9,11],mixolidio:[0,2,4,5,7,9,10],eolico:[0,2,3,5,7,8,10],menor:[0,2,3,5,7,8,10],locrio:[0,1,3,5,6,8,10]};
+  const NN=["C","Db","D","Eb","E","F","Gb","G","Ab","A","Bb","B"], a=(arg||"").normalize("NFD").replace(/[\u0300-\u036f]/g,"").toLowerCase().replace(/minor/,"menor").replace(/major/,"mayor");
+  const rm=a.match(/\b([a-g][#b]?)\b/), root=rm?rm[1][0].toUpperCase()+rm[1].slice(1):"D", mode=Object.keys(MODES).find(k=>a.includes(k))||"dorico";
+  const r=NOTE[root]!==undefined?NOTE[root]:2, sc=MODES[mode].map(i=>(r+i)%12), q=[];
+  for(let i=0;i<7;i++){ const R=sc[i],T3=(sc[(i+2)%7]-R+12)%12,F5=(sc[(i+4)%7]-R+12)%12; q.push(NN[R]+(T3===3?(F5===6?"dim":"m"):"")); }
+  return NN[r]+" "+mode+": "+sc.map(x=>NN[x]).join(" ")+"\nAcordes diatonicos: "+q.join(" - ")+"\nNotas caracteristicas del modo: evita la sensible si el modo es dorico/eolico/mixolidio.";
+}
+const TOOLFN={STYLE:async a=>toolStyle(a),MOTIF:async a=>toolMotif(a),PHRASE:async a=>toolPhrase(a),PROGRESSION:async a=>toolProgression(a),INSTRUMENTS:async()=>[...SF].join(", "),VARY:async a=>toolVary(a),SCALE:async a=>toolScale(a)};
+function parseCalls(txt){
+  const out=[], re=/^[ \t>*`-]*TOOL_(STYLE|MOTIF|PHRASE|PROGRESSION|SEARCH|INSTRUMENTS|VARY|SCALE|VALIDATE)\b[ \t]*:?[ \t]*(.*)$/gim; let m;
+  while((m=re.exec(txt))){ const name=m[1].toUpperCase(); if(name==="VALIDATE"){ out.push({name,arg:txt.slice(m.index+m[0].length)}); break; } out.push({name,arg:m[2].trim().slice(0,400)}); }
+  return out;
+}
+async function chat(messages,model){
+  let lastErr;
+  for(let a=0;a<3;a++){
+    try{
+      const r=await fetch(CONFIG.apiUrl,{method:"POST",headers:{Authorization:"Bearer "+CONFIG.apiKey,"Content-Type":"application/json","HTTP-Referer":location.origin||"http://localhost","X-Title":"Aether"},body:JSON.stringify({model,messages,temperature:0.8,max_tokens:7000})});
+      let d; try{ d=await r.json(); }catch(e){ throw new Error("Respuesta no JSON ("+r.status+")"); }
+      if(!r.ok||(d.error&&d.error.message)) throw new Error((d.error&&(d.error.message||JSON.stringify(d.error)))||("HTTP "+r.status));
+      const c=((d.choices&&d.choices[0]&&d.choices[0].message&&d.choices[0].message.content)||"").replace(/<think>[\s\S]*?<\/think>/gi,"").trim();
+      if(!c) throw new Error("Respuesta vacia del modelo");
+      return c;
+    }catch(e){ lastErr=e; addStep("error","Intento "+(a+1)+"/3 fallido ("+model+")",String(e.message||e),"err"); if(/401|auth|api key|credentials/i.test(String(e.message))) throw e; await new Promise(r=>setTimeout(r,1500*(a+1))); }
+  }
+  if(model!=="openrouter/free"){ addStep("sistema","Cambio a openrouter/free","", "sys"); return chat(messages,"openrouter/free"); }
+  throw lastErr;
+}
+async function wiki(lang,q){
+  const u="https://"+lang+".wikipedia.org/w/api.php?action=query&generator=search&gsrsearch="+encodeURIComponent(q)+"&gsrlimit=2&prop=extracts&exintro=1&explaintext=1&exchars=800&format=json&origin=*";
+  const d=await (await fetch(u)).json();
+  return Object.values((d.query||{}).pages||{}).sort((a,b)=>a.index-b.index).map(p=>"["+lang+".wikipedia] "+p.title+": "+(p.extract||"").replace(/\s+/g," "));
+}
+async function toolSearch(q){
+  const r=await Promise.allSettled([wiki("es",q),wiki("en",q)]), o=r.flatMap(x=>x.status==="fulfilled"?x.value:[]);
+  return o.length?o.join("\n\n"):"Sin resultados: reformula con otras palabras (genero, modo, instrumento, obra famosa).";
+}
+
+const IMAP={"flauta dulce":"recorder","flauta":"flute","laud":"acoustic_guitar_nylon","guitarra":"acoustic_guitar_nylon","violin":"violin","violonchelo":"cello","chelo":"cello","cello":"cello","piano":"acoustic_grand_piano","arpa":"orchestral_harp","organo":"church_organ","trompeta":"trumpet","trompa":"french_horn","timbal":"timpani","oboe":"oboe","clarinete":"clarinet","fagot":"bassoon","gaita":"bagpipe","banjo":"banjo","sitar":"sitar","coro":"choir_aahs","viola":"viola","xilofono":"xylophone","marimba":"marimba","campanas":"tubular_bells","arpa celta":"orchestral_harp"};
+let REQ={raw:"",inst:[]};
+function reqOf(p){ const a=p.normalize("NFD").replace(/[\u0300-\u036f]/g,"").toLowerCase(), o=new Set(); Object.entries(IMAP).forEach(([k,v])=>{ if(a.includes(k)&&!(k==="flauta"&&a.includes("flauta dulce"))&&SF.has(v)) o.add(v); }); return [...o]; }
+async function agent(prompt,model){
+  clearSteps(); REQ={raw:prompt,inst:reqOf(prompt)};
+  addStep("sistema","Inicio","Prompt usuario:\n"+prompt+(REQ.inst.length?"\nInstrumentos pedidos: "+REQ.inst.join(", "):""),"sys");
+  const MAX=10, messages=[{role:"system",content:SYSTEM},{role:"user",content:"PETICION DEL USUARIO: "+prompt+(REQ.inst.length?"\nINSTRUMENTOS PEDIDOS: "+REQ.inst.join(", "):"")+"\n\nUsa las tools que te ayuden (busqueda, estilo, escala, motivo, variaciones; varias por mensaje si quieres) y entrega el PMNS final cuando estes satisfecho. Prioriza calidad, variedad y fidelidad a la peticion."}];
+  let last="";
+  for(let i=0;i<MAX;i++){
+    st("Agente "+(i+1)+"/"+MAX+"…"); last=await chat(messages,model); addStep("modelo","Respuesta "+(i+1),last,"model");
+    const calls=parseCalls(last);
+    if(calls.length){
+      const res=[];
+      for(const c of calls.slice(0,6)){
+        let r;
+        try{
+          if(c.name==="VALIDATE"){ const d=cleanScore(c.arg)||cleanScore(last); r=d?toolValidate(d).replace(/^ERRORES:/,"AVISOS orientativos (decides tu si corregir):"):"No encontre un PMNS tras TOOL_VALIDATE"; }
+          else if(c.name==="SEARCH"){ st("Buscando: "+c.arg); r=await toolSearch(c.arg); }
+          else r=await TOOLFN[c.name](c.arg);
+        }catch(e){ r="La tool fallo ("+(e.message||e)+"); sigue sin ella."; }
+        addStep("tool","TOOL_"+c.name+(c.name==="VALIDATE"?"":" → "+c.arg),r,"tool"); res.push("Resultado TOOL_"+c.name+":\n"+r);
+      }
+      messages.push({role:"assistant",content:last},{role:"user",content:res.join("\n\n")+"\n\nContinua: mas tools si te hacen falta, o entrega directamente el PMNS final."}); continue;
+    }
+    const md=cleanScore(last);
+    if(md==="lo siento no puedo hacer eso"){ addStep("sistema","Rechazo no musical","","sys"); return md; }
+    if(md&&/notas:/i.test(md)){
+      try{ const v=toolValidate(md); addStep("sistema","Avisos (informativos, no bloquean)",v.replace(/^ERRORES:/,"AVISOS:"),"sys"); }catch(e){}
+      return md;
+    }
+    messages.push({role:"assistant",content:last},{role:"user",content:"Entrega la pieza en formato PMNS (empieza con #, con campos instrumento: y notas: en cada seccion)."});
+  }
+  return cleanScore(last)||last;
+}
+async function loadModels(){
+  try{
+    const r=await fetch(CONFIG.modelsUrl); const d=await r.json(); const free=[];
+    for(const m of (d.data||[])){
+      const id=m.id||""; const pr=m.pricing||{}; const p=parseFloat(pr.prompt||"1"), c=parseFloat(pr.completion||"1");
+      if(id.endsWith(":free")||(p===0&&c===0)) free.push(id);
+    }
+    free.sort((a,b)=>{ const ia=CONFIG.preferredFree.indexOf(a), ib=CONFIG.preferredFree.indexOf(b); if(ia>=0||ib>=0) return (ia<0?99:ia)-(ib<0?99:ib); return a.localeCompare(b); });
+    if(!free.length) free.push(CONFIG.defaultModel);
+    $.model.innerHTML=free.map(id=>`<option value="${id}"${id===CONFIG.defaultModel?" selected":""}>${id}</option>`).join("");
+    if(!free.includes(CONFIG.defaultModel)) $.model.selectedIndex=0;
+    $.chip.textContent=free.length+" free · panel de pasos";
+  }catch(e){ $.model.innerHTML=CONFIG.preferredFree.map(id=>`<option value="${id}">${id}</option>`).join(""); }
+}
+
+$.go.onclick=async()=>{
+  const prompt=$.prompt.value.trim(), model=$.model.value||CONFIG.defaultModel, key=document.getElementById("key").value.trim();
+  if(!prompt){ st("Escribe un prompt","err"); return; }
+  if(!key){ st("Pega tu API key de OpenRouter","err"); return; }
+  CONFIG.apiKey=key; try{ localStorage.setItem("aether_key",key); }catch(e){}
+  $.go.disabled=true; $.side.classList.remove("hidden"); stopPlay();
+  try{
+    const md=await agent(prompt,model);
+    if(md==="lo siento no puedo hacer eso"){ st("No es una petición musical","err"); $.score.textContent=md; return; }
+    if(!md||!/notas:/i.test(md)){ st("Partitura inválida","err"); $.score.textContent=String(md).slice(0,2500); return; }
+    $.score.textContent=md;
+    const w=parsePMNS(md), {events,duration}=buildEvents(w);
+    const item={id:Math.random().toString(36).slice(2,9),title:w.title,style:w.style,key:w.key,tempo:w.tempo,events,duration,durLabel:fmt(duration),md};
+    library.unshift(item); saveLib(); renderList(); await playItem(item);
+  }catch(e){ st(String(e.message||e),"err"); addStep("error","Fallo",String(e.message||e),"err"); }
+  finally{ $.go.disabled=false; }
+};
+$.play.onclick=()=>{ if(current) playItem(current); };
+$.stop.onclick=()=>stopPlay();
+$.dl.onclick=()=>exportItem(current,"mp3");
+document.getElementById("dlwav").onclick=()=>exportItem(current,"wav");
+document.getElementById("dlweb").onclick=()=>exportItem(current,"webm");
+try{ document.getElementById("key").value=localStorage.getItem("aether_key")||""; }catch(e){}
+const ON="px-4 py-1.5 rounded-lg bg-violet-600/30 text-white font-medium border border-violet-500/40 shadow", OFF="px-4 py-1.5 rounded-lg text-slate-400 hover:text-slate-200 transition";
+document.querySelectorAll("[data-t]").forEach(b=>b.onclick=()=>{ document.querySelectorAll("[data-t]").forEach(x=>x.className=OFF); b.className=ON; ["score","roll","ana"].forEach(k=>G("p-"+k).classList.toggle("hidden",k!==b.dataset.t)); drawRoll(); });
+document.querySelectorAll("[data-cf]").forEach(b=>b.onclick=()=>{ document.querySelectorAll("[data-cf]").forEach(x=>x.className="py-1 rounded text-slate-400 hover:text-slate-200"); b.className="py-1 rounded bg-violet-600/30 text-violet-300 font-medium border border-violet-500/30"; $.steps.dataset.f=b.dataset.cf; });
+document.querySelectorAll("[data-nt]").forEach(b=>b.onclick=()=>document.querySelector('[data-t="'+b.dataset.nt+'"]').click()); G("q").oninput=renderList; G("prev").onclick=()=>{ const i=library.indexOf(current); if(library[i+1]) playItem(library[i+1]); }; G("next").onclick=()=>{ const i=library.indexOf(current); if(i>0) playItem(library[i-1]); }; G("vol").oninput=e=>{ if(vg) vg.gain.value=+e.target.value; };
+G("wave").onclick=e=>{ if(current&&current.buffer){ const r=G("wave").getBoundingClientRect(); playItem(current,(e.clientX-r.left)/r.width*current.duration); } };
+addEventListener("resize",()=>{ drawRoll(); drawWave(current,0); }); drawWave(null,0); renderList();
+const GM={recorder:74,flute:73,piccolo:72,oboe:68,clarinet:71,bassoon:70,english_horn:69,trumpet:56,french_horn:60,tuba:58,violin:40,viola:41,cello:42,orchestral_harp:46,acoustic_guitar_nylon:24,acoustic_bass:32,timpani:47,string_ensemble_1:48,church_organ:19,choir_aahs:52,acoustic_grand_piano:0,bagpipe:109,banjo:105,sitar:104,xylophone:13,marimba:12,tubular_bells:14,glockenspiel:9,music_box:10,vibraphone:11,celesta:8,harmonica:22,pizzicato_strings:45,tremolo_strings:44,synth_strings_1:50,woodblock:115,taiko_drum:116,kalimba:108,koto:107,fiddle:110,dulcimer:15,reed_organ:20,drawbar_organ:16,melodic_tom:117};
+function exportMIDI(it){
+  if(!it) return st("No hay pieza","err");
+  const PPQ=480, tk=x=>Math.round(x*it.tempo/60*PPQ), vl=n=>{ const b=[n&127]; while(n>>=7) b.unshift((n&127)|128); return b; };
+  const u32=n=>[n>>>24,(n>>16)&255,(n>>8)&255,n&255], str=t=>[...t].map(c=>c.charCodeAt(0)&127);
+  const chunk=(id,d)=>[...str(id),...u32(d.length),...d], meta=(ty,d)=>[0xFF,ty,...vl(d.length),...d];
+  const us=Math.round(6e7/it.tempo), trk=(evs)=>{ let last=0,o=[]; evs.sort((a,b)=>a[0]-b[0]||a[1]-b[1]).forEach(([t,,b])=>{ o.push(...vl(t-last),...b); last=t; }); o.push(0,0xFF,0x2F,0); return o; };
+  const tracks=[[[0,0,meta(0x51,[us>>16&255,us>>8&255,us&255])],[0,0,meta(0x03,str(it.title||"Aether"))]]];
+  const by={}; it.events.forEach(e=>(by[e.inst]=by[e.inst]||[]).push(e));
+  const CH=[0,1,2,3,4,5,6,7,8,10,11,12,13,14,15];
+  Object.entries(by).forEach(([n,evs],i)=>{ const ch=CH[i%15], t=[[0,0,meta(0x03,str(n))],[0,0,[0xC0|ch,GM[n]||0]]];
+    evs.forEach(e=>{ const a=tk(e.t), b=Math.max(a+1,tk(e.t+e.d)), m=Math.max(0,Math.min(127,e.midi)); t.push([a,2,[0x90|ch,m,Math.max(1,Math.min(127,Math.round(e.gain*127)))]],[b,1,[0x80|ch,m,0]]); });
+    tracks.push(t); });
+  const bytes=[...chunk("MThd",[0,1,...[tracks.length>>8,tracks.length&255],PPQ>>8,PPQ&255]),...tracks.flatMap(t=>chunk("MTrk",trk(t)))];
+  const a=document.createElement("a"); a.href=URL.createObjectURL(new Blob([new Uint8Array(bytes)],{type:"audio/midi"})); a.download=(it.title||"aether").replace(/[^\w\- áéíóúñ]/gi,"")+".mid"; a.click();
+  st("MIDI descargado ("+Object.keys(by).length+" pistas)","ok");
+}
+function saveLib(){ try{ localStorage.setItem("aether_lib",JSON.stringify(library.map(({id,title,style,key,tempo,md,seed})=>({id,title,style,key,tempo,md,seed})))); }catch(e){ console.warn("No se pudo guardar",e); } }
+function mkItem(md,id){ const w=parsePMNS(md), {events,duration}=buildEvents(w); return {id:id||Math.random().toString(36).slice(2,9),title:w.title,style:w.style,key:w.key,tempo:w.tempo,events,duration,durLabel:fmt(duration),md}; }
+function loadLib(){ try{ const v=JSON.parse(localStorage.getItem("aether_lib")||"[]"); library=v.map(x=>{ try{ { const it=mkItem(x.md,x.id); it.seed=x.seed; return it; } }catch(e){ return null; } }).filter(Boolean); if(library.length){ current=library[0]; showItem(current); } renderList(); }catch(e){ console.warn(e); } }
+function shareItem(it){
+  if(!it) return st("No hay pieza","err");
+  const url=location.href.split("#")[0]+"#song="+btoa(encodeURIComponent(it.md));
+  (navigator.clipboard?navigator.clipboard.writeText(url):Promise.reject()).then(()=>st("Enlace copiado al portapapeles","ok")).catch(()=>prompt("Copia este enlace:",url));
+}
+function loadURL(){
+  if(!location.hash.startsWith("#song=")) return;
+  try{ const it=mkItem(decodeURIComponent(atob(location.hash.slice(6))),"shared"); library=library.filter(x=>x.md!==it.md); library.unshift(it); current=it; saveLib(); showItem(it); st("Canción compartida cargada: pulsa ▶","ok"); }catch(e){ st("Enlace de canción inválido","err"); }
+}
+G("hcover").onclick=()=>{ if(!current) return; current.seed=(current.seed||hue(current.title)+1)+1; saveLib(); showItem(current); st("Nueva portada solicitada (puede tardar unos segundos)","ok"); };
+G("dlmid").onclick=()=>exportMIDI(current); G("share").onclick=()=>shareItem(current);
+loadLib(); loadURL();
+function savePNG(canvas,name){ canvas.toBlob(b=>{ const a=document.createElement("a"); a.href=URL.createObjectURL(b); a.download=name.replace(/[^\w\- áéíóúñ]/gi,"")+".png"; a.click(); st("PNG descargado","ok"); },"image/png"); }
+async function exportSheetPNG(){
+  const it=current, secs=[...G("sheet").children].filter(d=>d.querySelector&&d.querySelector("svg"));
+  if(!it||!secs.length) return st("Genera una pieza primero","err");
+  st("Generando PNG de la partitura…");
+  const H0=96+secs.reduce((a,d)=>a+48+d.querySelectorAll("svg").length*138+12,0); let S=2; if(H0*S>16000) S=Math.max(.5,16000/H0);
+  const c=document.createElement("canvas"); c.width=980*S; c.height=H0*S; const g=c.getContext("2d"); g.scale(S,S);
+  g.fillStyle="#0b0e22"; g.fillRect(0,0,980,H0);
+  g.fillStyle="#fff"; g.font="bold 26px Inter, sans-serif"; g.fillText(it.title,40,44);
+  g.fillStyle="#94a3b8"; g.font="13px 'JetBrains Mono', monospace"; g.fillText([(it.style||"").slice(0,70),it.tempo+" BPM",it.key].filter(Boolean).join("  •  "),40,68);
+  let y=96;
+  for(const d of secs){
+    const hd=d.children[0]; g.fillStyle="#e2e8f0"; g.font="600 16px Inter, sans-serif"; g.fillText(hd.children[0].innerText.replace(/\s+/g," "),40,y+20);
+    g.fillStyle="#67e8f9"; g.font="12px 'JetBrains Mono', monospace"; g.textAlign="right"; g.fillText(hd.children[1].innerText,940,y+20); g.textAlign="left"; y+=48;
+    for(const sv of d.querySelectorAll("svg")){
+      const k=sv.cloneNode(true); k.setAttribute("xmlns","http://www.w3.org/2000/svg"); k.setAttribute("width","900"); k.setAttribute("height","130"); k.setAttribute("stroke","rgba(56,189,248,0.45)"); k.setAttribute("fill","none"); k.removeAttribute("class");
+      k.querySelectorAll("g.on").forEach(x=>x.classList.remove("on"));
+      const img=new Image(); img.src="data:image/svg+xml;charset=utf-8,"+encodeURIComponent(new XMLSerializer().serializeToString(k));
+      try{ await img.decode(); g.drawImage(img,40,y,900,130); }catch(e){}
+      y+=138; }
+    y+=12; }
+  savePNG(c,(it.title||"aether")+"-partitura");
+}
+function exportRollPNG(){
+  const it=current, r=G("roll"); if(!it||!r.width) return st("Abre el Piano Roll con una pieza cargada","err");
+  const c=document.createElement("canvas"); c.width=r.width; c.height=r.height; const g=c.getContext("2d"); g.fillStyle="#0b0e22"; g.fillRect(0,0,c.width,c.height); g.drawImage(r,0,0); savePNG(c,(it.title||"aether")+"-pianoroll");
+}
+G("pngsheet").onclick=exportSheetPNG; G("pngroll").onclick=exportRollPNG;
+if(innerWidth<1024) $.side.classList.add("hidden");
+$.stop.onclick=()=>{ stopPlay(); $.time.textContent="0:00 / "+(current?current.durLabel:"0:00"); G("head").style.left="0%"; drawWave(current,0); };
+loadModels();
+
+</script></body></html>
